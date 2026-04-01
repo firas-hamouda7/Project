@@ -1,0 +1,4 @@
+com\example\aiagent\entity\ChatHistory.class
+com\example\aiagent\AiAgentApplication.class
+com\example\aiagent\controller\ChatController.class
+com\example\aiagent\repository\ChatHistoryRepository.class

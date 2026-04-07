@@ -18,6 +18,9 @@ public class ChatHistory {
 
     private String agentType;
 
+    @Column(columnDefinition = "TEXT")
+    private String metadata; // Re-ajout du champ metadata manquant
+
     private LocalDateTime timestamp;
 
     public ChatHistory() {}
@@ -30,6 +33,8 @@ public class ChatHistory {
     public void setAiResponse(String aiResponse) { this.aiResponse = aiResponse; }
     public String getAgentType() { return agentType; }
     public void setAgentType(String agentType) { this.agentType = agentType; }
+    public String getMetadata() { return metadata; }
+    public void setMetadata(String metadata) { this.metadata = metadata; }
     public LocalDateTime getTimestamp() { return timestamp; }
     public void setTimestamp(LocalDateTime timestamp) { this.timestamp = timestamp; }
 }

@@ -7,5 +7,9 @@ com\example\aiagent\AiAgentApplication.class
 com\example\aiagent\controller\RootController.class
 com\example\aiagent\repository\ChatHistoryRepository.class
 com\example\aiagent\agents\site\AgentSite.class
+com\example\aiagent\core\plan\PlanningService$PlanResult.class
+com\example\aiagent\core\broker\GestionnaireService.class
+com\example\aiagent\core\creation\CreationService$CreationResult.class
 com\example\aiagent\entity\ChatHistory.class
+com\example\aiagent\dto\ChatResponse$ProcessedResult.class
 com\example\aiagent\dto\RootRequest.class

@@ -9,6 +9,7 @@ import com.example.aiagent.entity.ChatHistory;
 import com.example.aiagent.repository.ChatHistoryRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
+import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -48,32 +49,61 @@ public class RootController {
         String aiResult;
         String agentType;
 
-        // ROUTAGE INTELLIGENT BASÉ SUR TON PROMPT
         if (lower.contains("site") || lower.contains("page") || lower.contains("landing")) {
-            // Routage → Agent Site
             aiResult = agentSite.buildSite(prompt, "LP", metadata);
             agentType = "AGENT_SITE";
         } else if (lower.contains("post") || lower.contains("social") || lower.contains("meta") || lower.contains("tweet")) {
-            // Routage → Agent SM
             aiResult = agentSM.processSocialMedia(prompt, "Digital Platform", metadata);
             agentType = "AGENT_SM";
         } else if (lower.contains("mail") || lower.contains("email") || lower.contains("newsletter")) {
-            // Routage → Agent Mailing
             aiResult = agentMailing.processMailing(prompt, metadata);
             agentType = "AGENT_MAILING";
         } else {
-            // Résultat par défaut si non déterminé
             aiResult = "Agent non déterminé pour cette demande.";
             agentType = "UNKNOWN_AGENT";
         }
 
-        // Ajout au résultat structuré
-        results.add(new ChatResponse.ProcessedResult(agentType, aiResult, Map.of("prompt", prompt)));
+        // NETTOYAGE DU CODE (Enlève les balises ```html et ```)
+        aiResult = cleanAiResponse(aiResult);
 
-        // Sauvegarde historique avec ton nouveau JSON consolidé
+        results.add(new ChatResponse.ProcessedResult(agentType, aiResult, Map.of("prompt", prompt)));
         saveHistory(prompt, aiResult, agentType, metadata);
 
         return new ChatResponse("SUCCESS", results);
+    }
+
+    private String cleanAiResponse(String source) {
+        if (source == null) return "";
+        // 1. Enlever les balises Markdown
+        String cleaned = source.replace("```html", "")
+                               .replace("```", "")
+                               .trim();
+        
+        // 2. Couper tout ce qui dépasse après la fin du code HTML
+        int htmlEnd = cleaned.toLowerCase().lastIndexOf("</html>");
+        if (htmlEnd != -1) {
+            cleaned = cleaned.substring(0, htmlEnd + 7);
+        }
+        
+        return cleaned.trim();
+    }
+
+    @GetMapping(value = "/preview", produces = MediaType.TEXT_HTML_VALUE)
+    public String previewLatest() {
+        try {
+            return chatHistoryRepository.findAll().stream()
+                .filter(h -> h != null && h.getAgentType() != null && h.getAgentType().startsWith("AGENT_SITE"))
+                .reduce((first, second) -> second)
+                .map(ChatHistory::getAiResponse)
+                .orElse("<html><body><h1>Aucun historique</h1></body></html>");
+        } catch (Exception e) {
+            return "<html><body><h1>Erreur</h1><p>" + e.getMessage() + "</p></body></html>";
+        }
+    }
+
+    @GetMapping(value = "/preview/latest", produces = MediaType.TEXT_HTML_VALUE)
+    public String previewLatestAlias() {
+        return previewLatest();
     }
 
     private void saveHistory(String userMessage, String aiResponse, String agentType, Map<String, Object> metadataMap) {

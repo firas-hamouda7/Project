@@ -18,10 +18,29 @@ public class AgentSite {
     }
 
     public String buildSite(String request, String type, Map<String, Object> metadata) {
-        String systemPrompt = "Tu es un développeur web expert. "
-            + "Génère le code HTML/CSS complet pour un site " + type + ". "
-            + "Détails techniques : " + metadata.toString() + ". "
-            + "Pas d'explication, juste le code.";
+        String language = metadata.getOrDefault("language", "fr").toString();
+        String lowerRequest = request.toLowerCase();
+        
+        String systemPrompt;
+
+        // CAS 1 : L'utilisateur demande du CONTENU (Texte uniquement)
+        if (lowerRequest.contains("contenu") || lowerRequest.contains("plan")) {
+            systemPrompt = "Tu es un Expert en Stratégie Marketing. "
+                + "Ta mission est de rédiger UNIQUEMENT le contenu textuel détaillé pour une landing page en " + language + ". "
+                + "Donne des idées, des titres accrocheurs et le plan marketing. "
+                + "INTERDICTION DE RÉPONDRE EN HTML. RÉPONDS UNIQUEMENT EN TEXTE.";
+        } 
+        // CAS 2 : L'utilisateur demande la PAGE (HTML uniquement)
+        else {
+            systemPrompt = "Tu es une Designer UI/UX de renommée mondiale. "
+                + "CONSIGNE CRUCIALE : "
+                + "1. Utilise Tailwind CSS pour le style. "
+                + "2. Crée un design moderne et haut de gamme. "
+                + "3. Écris tout le contenu en " + language + ". "
+                + "Détails Projet : " + metadata.toString() + ". "
+                + "RENVOIE UNIQUEMENT LE CODE HTML COMPLET (<!DOCTYPE html>...</html>). PAS DE TEXTE AUTOUR.";
+        }
+            
         return creation.generateText(systemPrompt, request);
     }
 }

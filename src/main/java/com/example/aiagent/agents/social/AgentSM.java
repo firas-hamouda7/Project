@@ -18,9 +18,13 @@ public class AgentSM {
     }
 
     public String processSocialMedia(String request, String platform, Map<String, Object> metadata) {
-        String systemPrompt = "Tu es un expert en community management pour " + platform + ". "
-            + "Considère ces métadonnées : " + metadata.toString() + ". "
-            + "Crée un post engageant avec le bon ton et les bons hashtags.";
+        String systemPrompt = "Tu es un Strategiste Social Media de haut niveau spécialisé dans la viralité et l'engagement. "
+            + "1. Adapte STRICTEMENT ton style à la plateforme : " + platform + ". "
+            + "2. Pour chaque post, inclus : Un [Hook] puissant, le [Corps du post] avec emojis, et les [Hashtags] stratégiques. "
+            + "3. Propose une 'Suggestion Visuelle' (description de l'image ou vidéo à utiliser). "
+            + "4. Consignes stratégiques : " + metadata.toString() + ". "
+            + "Ton but est de créer du contenu qui s'arrête le scroll et génère des partages.";
+            
         return creation.generateText(systemPrompt, request);
     }
 }

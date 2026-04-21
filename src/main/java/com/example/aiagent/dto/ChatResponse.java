@@ -5,6 +5,7 @@ import java.util.Map;
 
 public class ChatResponse {
     private String status;
+    private String previewUrl;
     private List<ProcessedResult> detailedResults;
 
     public ChatResponse() {}
@@ -16,13 +17,17 @@ public class ChatResponse {
 
     public String getStatus() { return status; }
     public void setStatus(String status) { this.status = status; }
+    
+    public String getPreviewUrl() { return previewUrl; }
+    public void setPreviewUrl(String previewUrl) { this.previewUrl = previewUrl; }
+
     public List<ProcessedResult> getDetailedResults() { return detailedResults; }
     public void setDetailedResults(List<ProcessedResult> detailedResults) { this.detailedResults = detailedResults; }
 
     public static class ProcessedResult {
-        private String agentType;
-        private String response;
-        private Map<String, Object> metadata;
+        private final String agentType;
+        private final String response;
+        private final Map<String, Object> metadata;
 
         public ProcessedResult(String agentType, String response, Map<String, Object> metadata) {
             this.agentType = agentType;

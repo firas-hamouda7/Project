@@ -1,6 +1,6 @@
 package com.example.aiagent.core.creation;
 
-import org.springframework.ai.ollama.OllamaChatModel;
+import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.chat.prompt.Prompt;
 import org.springframework.ai.chat.messages.UserMessage;
 import org.springframework.ai.chat.messages.SystemMessage;
@@ -12,15 +12,11 @@ import java.util.List;
 @Service
 public class CreationService {
 
-    private final OllamaChatModel chatModel;
+    private final ChatModel chatModel;
 
     @Autowired
-    public CreationService(OllamaChatModel chatModel) {
+    public CreationService(ChatModel chatModel) {
         this.chatModel = chatModel;
-    }
-
-    public String generateText(String prompt) {
-        return chatModel.call(prompt);
     }
 
     public String generateText(String systemPrompt, String userPrompt) {
@@ -38,6 +34,7 @@ public class CreationService {
         return "[VIDEO_ASSET | prompt=" + prompt.hashCode() + "]";
     }
 
+    // --- RESTAURATION DES MÉTHODES MANQUANTES ---
     public CreationResult generateFullContent(String systemContext, String userRequest) {
         String text = generateText(systemContext, userRequest);
         String image = generateImage(userRequest);

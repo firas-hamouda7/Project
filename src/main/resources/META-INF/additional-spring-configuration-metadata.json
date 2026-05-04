@@ -1,0 +1,9 @@
+{
+  "properties": [
+    {
+      "name": "pixabay.api.key",
+      "type": "java.lang.String",
+      "description": "Pixabay API key for image search."
+    }
+  ]
+}

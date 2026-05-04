@@ -2,7 +2,6 @@ package com.example.aiagent.agents.mailing;
 
 import java.util.Map;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 
@@ -14,7 +13,6 @@ public class AgentMailing {
 
     private final CreationService creation;
 
-    @Autowired
     public AgentMailing(CreationService creation) {
         this.creation = creation;
     }

@@ -2,7 +2,6 @@ package com.example.aiagent.core.broker;
 
 import com.example.aiagent.core.creation.CreationService;
 import com.example.aiagent.core.plan.PlanningService;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -11,7 +10,6 @@ public class GestionnaireService {
     private final CreationService creation;
     private final PlanningService plan;
 
-    @Autowired
     public GestionnaireService(CreationService creation, PlanningService plan) {
         this.creation = creation;
         this.plan = plan;

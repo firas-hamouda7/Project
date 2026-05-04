@@ -1,7 +1,6 @@
 package com.example.aiagent.core.plan;
 
 import com.example.aiagent.core.creation.CreationService;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -9,7 +8,6 @@ public class PlanningService {
 
     private final CreationService creation;
 
-    @Autowired
     public PlanningService(CreationService creation) {
         this.creation = creation;
     }

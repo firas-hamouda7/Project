@@ -214,12 +214,6 @@ public class RootController {
             brandingName = sub.split(",")[0].replace("}", "").replace("{", "").trim();
         }
 
-        String keywords = "technology";
-        if (metadataStr.contains("visualTopic=")) {
-            String sub = metadataStr.substring(metadataStr.indexOf("visualTopic=") + 12);
-            keywords = sub.split(",")[0].replace("}", "").replace("{", "").trim();
-        }
-
         String mediaUrl = last.getImageUrl() != null ? last.getImageUrl() : "";
         boolean isVideo = mediaUrl.endsWith(".mp4") || mediaUrl.contains("/videos/");
         String imageUrl = isVideo ? "" : mediaUrl;

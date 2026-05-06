@@ -2,11 +2,15 @@ C:\Users\user\Desktop\ghost-employer\src\main\java\com\example\aiagent\agents\ma
 C:\Users\user\Desktop\ghost-employer\src\main\java\com\example\aiagent\agents\site\AgentSite.java
 C:\Users\user\Desktop\ghost-employer\src\main\java\com\example\aiagent\agents\social\AgentSM.java
 C:\Users\user\Desktop\ghost-employer\src\main\java\com\example\aiagent\AiAgentApplication.java
+C:\Users\user\Desktop\ghost-employer\src\main\java\com\example\aiagent\controller\KnowledgeController.java
 C:\Users\user\Desktop\ghost-employer\src\main\java\com\example\aiagent\controller\RootController.java
 C:\Users\user\Desktop\ghost-employer\src\main\java\com\example\aiagent\core\broker\GestionnaireService.java
 C:\Users\user\Desktop\ghost-employer\src\main\java\com\example\aiagent\core\creation\CreationService.java
+C:\Users\user\Desktop\ghost-employer\src\main\java\com\example\aiagent\core\document\DriveWatcherService.java
 C:\Users\user\Desktop\ghost-employer\src\main\java\com\example\aiagent\core\plan\PlanningService.java
 C:\Users\user\Desktop\ghost-employer\src\main\java\com\example\aiagent\dto\ChatResponse.java
 C:\Users\user\Desktop\ghost-employer\src\main\java\com\example\aiagent\dto\RootRequest.java
 C:\Users\user\Desktop\ghost-employer\src\main\java\com\example\aiagent\entity\ChatHistory.java
+C:\Users\user\Desktop\ghost-employer\src\main\java\com\example\aiagent\entity\KnowledgeChunk.java
 C:\Users\user\Desktop\ghost-employer\src\main\java\com\example\aiagent\repository\ChatHistoryRepository.java
+C:\Users\user\Desktop\ghost-employer\src\main\java\com\example\aiagent\repository\KnowledgeChunkRepository.java

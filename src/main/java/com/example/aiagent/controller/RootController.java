@@ -17,6 +17,7 @@ import com.example.aiagent.agents.mailing.AgentMailing;
 import com.example.aiagent.agents.site.AgentSite;
 import com.example.aiagent.agents.social.AgentSM;
 import com.example.aiagent.core.creation.CreationService;
+import com.example.aiagent.core.document.DriveWatcherService;
 import com.example.aiagent.dto.ChatResponse;
 import com.example.aiagent.dto.RootRequest;
 import com.example.aiagent.entity.ChatHistory;
@@ -31,6 +32,7 @@ public class RootController {
     @Autowired private AgentMailing agentMailing;
     @Autowired private CreationService creationService;
     @Autowired private ChatHistoryRepository chatHistoryRepository;
+    @Autowired private DriveWatcherService driveWatcherService;
 
     @PostMapping("/process")
     public ChatResponse process(@RequestBody RootRequest request) {
@@ -79,18 +81,29 @@ public class RootController {
         System.out.println("DEBUG: Mots-clés visuels = " + visualTopic);
         metadata.put("visualTopic", visualTopic);
 
-        // 3. AGENTS
+        // 3. INJECTION DU CONTEXTE CLIENT (Veille Silencieuse)
+        String enrichedPrompt = prompt;
+        if (metadata.containsKey("clientId") && metadata.get("clientId") != null) {
+            String clientId = metadata.get("clientId").toString();
+            String context = driveWatcherService.buildContext(clientId);
+            if (!context.isBlank()) {
+                enrichedPrompt = prompt + "\n\n--- EXPERTISE CLIENT (base de connaissance Ghost) ---\n" + context;
+                System.out.println("DEBUG: Contexte client injecté pour " + clientId + " (" + context.length() + " chars)");
+            }
+        }
+
+        // 4. AGENTS
         String aiResult;
         String agentType;
 
         if (lower.contains("site") || lower.contains("page") || lower.contains("landing") || lower.contains("hero") || lower.contains("contenu") || lower.contains("section")) {
-            aiResult = agentSite.buildSite(prompt, "LP", metadata);
+            aiResult = agentSite.buildSite(enrichedPrompt, "LP", metadata);
             agentType = "AGENT_SITE";
         } else if (lower.contains("social") || lower.contains("instagram") || lower.contains("facebook") || lower.contains("linkedin") || lower.contains("twitter") || lower.contains("tweet") || lower.contains("post") || lower.contains("reel")) {
-            aiResult = agentSM.processSocialMedia(prompt, "Social", metadata);
+            aiResult = agentSM.processSocialMedia(enrichedPrompt, "Social", metadata);
             agentType = "AGENT_SM";
         } else if (lower.contains("mail") || lower.contains("email")) {
-            aiResult = agentMailing.processMailing(prompt, metadata);
+            aiResult = agentMailing.processMailing(enrichedPrompt, metadata);
             agentType = "AGENT_MAILING";
         } else {
             aiResult = "Agent non déterminé.";

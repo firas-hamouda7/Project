@@ -9,6 +9,8 @@ import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.text.PDFTextStripper;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -81,12 +83,12 @@ public class KnowledgeController {
         }
     }
 
-    /** Upload direct d'un fichier PDF et indexation immédiate. */
+    /** Upload direct d'un fichier PDF et indexation immédiate. clientId = email de l'utilisateur connecté. */
     @PostMapping(value = "/upload-pdf", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<Map<String, Object>> uploadPdf(
-            @RequestParam MultipartFile file,
-            @RequestParam String clientId) {
+            @RequestParam MultipartFile file) {
 
+        String clientId = getClientId();
         if (file.isEmpty()) {
             return ResponseEntity.badRequest().body(Map.of("error", "Fichier PDF vide."));
         }
@@ -130,15 +132,15 @@ public class KnowledgeController {
 
     /**
      * Importe du texte brut directement (accès API / export Notion / notes).
-     * Body JSON : { "clientId": "...", "text": "...", "sourceName": "..." }
+     * Body JSON : { "text": "...", "sourceName": "..." } — clientId auto depuis JWT
      */
     @PostMapping("/import-text")
     public ResponseEntity<Map<String, Object>> importText(@RequestBody Map<String, String> body) {
-        String clientId  = body.get("clientId");
+        String clientId  = getClientId();
         String text      = body.get("text");
         String sourceName = body.getOrDefault("sourceName", "Texte importé");
-        if (clientId == null || text == null || text.isBlank()) {
-            return ResponseEntity.badRequest().body(Map.of("error", "clientId et text requis"));
+        if (text == null || text.isBlank()) {
+            return ResponseEntity.badRequest().body(Map.of("error", "text requis"));
         }
         if (text.length() > 4000) text = text.substring(0, 4000) + "...";
 
@@ -163,14 +165,14 @@ public class KnowledgeController {
 
     /**
      * Scrape n'importe quel site web et indexe son contenu (source "site web").
-     * Body JSON : { "clientId": "...", "url": "https://..." }
+     * Body JSON : { "url": "https://..." } — clientId auto depuis JWT
      */
     @PostMapping("/import-url")
     public ResponseEntity<Map<String, Object>> importUrl(@RequestBody Map<String, String> body) {
-        String clientId = body.get("clientId");
+        String clientId = getClientId();
         String url      = body.get("url");
-        if (clientId == null || url == null || url.isBlank()) {
-            return ResponseEntity.badRequest().body(Map.of("error", "clientId et url requis"));
+        if (url == null || url.isBlank()) {
+            return ResponseEntity.badRequest().body(Map.of("error", "url requis"));
         }
         try {
             String text = watcher.fetchRawText(url);
@@ -215,6 +217,12 @@ public class KnowledgeController {
             return ResponseEntity.ok(Map.of("status", "EMPTY", "message", "Aucune connaissance indexée pour " + clientId));
         }
         return ResponseEntity.ok(Map.of("status", "OK", "clientId", clientId, "context", context));
+    }
+
+    /** Retourne le clientId (email) de l'utilisateur connecté. */
+    private String getClientId() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        return auth.getName();
     }
 
     /** Liste toutes les sources en cours de surveillance. */

@@ -2,8 +2,15 @@ package com.example.aiagent.controller;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.web.bind.annotation.RequestParam;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -41,91 +48,86 @@ public class RootController {
         Map<String, Object> metadata = request.getMetadata();
         List<ChatResponse.ProcessedResult> results = new ArrayList<>();
 
-        String finalLanguage;
-        if (metadata.containsKey("language") && metadata.get("language") != null) {
-            finalLanguage = metadata.get("language").toString();
+        // 1. DÉTECTION AGENT — priorité au type explicite envoyé par le frontend
+        String agentType;
+        String typeParam = metadata.containsKey("type") ? metadata.get("type").toString() : "";
+        if (typeParam.equals("landing_page") || typeParam.equals("contenu")) {
+            agentType = "AGENT_SITE";
+        } else if (typeParam.equals("social")) {
+            agentType = "AGENT_SM";
+        } else if (typeParam.equals("mailing")) {
+            agentType = "AGENT_MAILING";
+        } else if (lower.contains("site") || lower.contains("page") || lower.contains("landing")
+                || lower.contains("hero") || lower.contains("contenu") || lower.contains("section")
+                || lower.contains("vitrine") || lower.contains("web")) {
+            agentType = "AGENT_SITE";
+        } else if (lower.contains("social") || lower.contains("instagram") || lower.contains("facebook")
+                || lower.contains("linkedin") || lower.contains("twitter") || lower.contains("tweet")
+                || lower.contains("post") || lower.contains("reel")) {
+            agentType = "AGENT_SM";
+        } else if (lower.contains("mail") || lower.contains("email")) {
+            agentType = "AGENT_MAILING";
         } else {
-            try {
-                finalLanguage = creationService.generateText(
-                    "Detect language (ex: 'français', 'arabe', 'anglais'). ONLY the word.",
-                    prompt
-                ).toLowerCase().replaceAll("[^a-z]", "");
-            } catch(Exception e) { finalLanguage = "français"; }
+            agentType = "AGENT_SITE"; // défaut : landing page
         }
+
+        // 2. LANGUE — défaut français (évite un appel IA inutile)
+        String finalLanguage = metadata.containsKey("language") && metadata.get("language") != null
+                ? metadata.get("language").toString() : "français";
         metadata.put("language", finalLanguage);
 
-        // 2. MOTS-CLÉS VISUELS pour image
+        // 3. MOTS-CLÉS VISUELS (seulement si image nécessaire)
         String visualTopic = "people,business";
-        try {
-            String topicResponse = creationService.generateText(
-                "You are a stock photo search expert. Analyze the user's prompt and return EXACTLY 2 specific English nouns (comma-separated, no spaces) that describe the main visual subject for a stock photo. "
-                + "The keywords must match the EXACT topic of the prompt — do NOT default to sport or fitness unless the prompt is about sport. "
-                + "Examples: "
-                + "restaurant opening prompt → 'food,restaurant' | "
-                + "gym prompt → 'gym,fitness' | "
-                + "hair salon prompt → 'hairstyle,salon' | "
-                + "car dealership prompt → 'car,dealership' | "
-                + "bakery prompt → 'bread,bakery' | "
-                + "tech startup prompt → 'technology,office' | "
-                + "fashion prompt → 'fashion,clothes' | "
-                + "travel prompt → 'travel,adventure'. "
-                + "ONLY return 2 keywords. Nothing else. No punctuation.",
-                prompt
-            ).toLowerCase().replaceAll("[^a-z,]", "").trim();
-
-            if (!topicResponse.isEmpty() && topicResponse.contains(",")) {
-                visualTopic = topicResponse;
-            }
-        } catch(Exception e) { visualTopic = "people,business"; }
-
-        System.out.println("DEBUG: Mots-clés visuels = " + visualTopic);
+        boolean needsImage = !agentType.equals("AGENT_SITE") && !agentType.equals("UNKNOWN_AGENT");
+        if (needsImage) {
+            try {
+                String topicResponse = creationService.generateText(
+                    "Return EXACTLY 2 English nouns (comma-separated) for a stock photo matching this prompt. ONLY 2 words.",
+                    prompt
+                ).toLowerCase().replaceAll("[^a-z,]", "").trim();
+                if (!topicResponse.isEmpty() && topicResponse.contains(",")) {
+                    visualTopic = topicResponse;
+                }
+            } catch (Exception e) { visualTopic = "people,business"; }
+        }
         metadata.put("visualTopic", visualTopic);
 
-        // 3. INJECTION DU CONTEXTE CLIENT (Veille Silencieuse)
+        // 4. INJECTION CONTEXTE CLIENT
         String enrichedPrompt = prompt;
         if (metadata.containsKey("clientId") && metadata.get("clientId") != null) {
             String clientId = metadata.get("clientId").toString();
             String context = driveWatcherService.buildContext(clientId);
             if (!context.isBlank()) {
-                enrichedPrompt = prompt + "\n\n--- EXPERTISE CLIENT (base de connaissance Ghost) ---\n" + context;
-                System.out.println("DEBUG: Contexte client injecté pour " + clientId + " (" + context.length() + " chars)");
+                enrichedPrompt = prompt + "\n\n--- EXPERTISE CLIENT ---\n" + context;
+                System.out.println("DEBUG: Contexte client injecté pour " + clientId);
             }
         }
 
-        // 4. AGENTS
+        // 5. APPEL AGENT
         String aiResult;
-        String agentType;
-
-        if (lower.contains("site") || lower.contains("page") || lower.contains("landing") || lower.contains("hero") || lower.contains("contenu") || lower.contains("section")) {
+        if (agentType.equals("AGENT_SITE")) {
             aiResult = agentSite.buildSite(enrichedPrompt, "LP", metadata);
-            agentType = "AGENT_SITE";
-        } else if (lower.contains("social") || lower.contains("instagram") || lower.contains("facebook") || lower.contains("linkedin") || lower.contains("twitter") || lower.contains("tweet") || lower.contains("post") || lower.contains("reel")) {
+        } else if (agentType.equals("AGENT_SM")) {
             aiResult = agentSM.processSocialMedia(enrichedPrompt, "Social", metadata);
-            agentType = "AGENT_SM";
-        } else if (lower.contains("mail") || lower.contains("email")) {
+        } else if (agentType.equals("AGENT_MAILING")) {
             aiResult = agentMailing.processMailing(enrichedPrompt, metadata);
-            agentType = "AGENT_MAILING";
         } else {
             aiResult = "Agent non déterminé.";
-            agentType = "UNKNOWN_AGENT";
         }
-
         aiResult = cleanMarkdown(aiResult);
 
-        // 4. GÉNÉRATION IMAGE ou VIDÉO selon le type demandé
+        // 6. IMAGE / VIDÉO (non-site uniquement)
         String imageUrl = "";
         String videoUrl = "";
         boolean isReel = (metadata.containsKey("type") && "reel".equalsIgnoreCase(metadata.get("type").toString()))
                       || lower.contains("reel") || lower.contains("video") || lower.contains("vidéo");
-        if (!agentType.equals("AGENT_SITE") && !agentType.equals("UNKNOWN_AGENT")) {
+        if (needsImage) {
             if (isReel) {
                 videoUrl = creationService.generateVideo(visualTopic);
                 metadata.put("videoUrl", videoUrl);
-                System.out.println("DEBUG: videoUrl = " + videoUrl);
             } else {
                 imageUrl = creationService.generateImage(visualTopic);
                 metadata.put("imageUrl", imageUrl);
-                System.out.println("DEBUG: imageUrl = " + imageUrl);
             }
         }
 
@@ -189,12 +191,17 @@ public class RootController {
 
         results.add(new ChatResponse.ProcessedResult(agentType, aiResult, Map.copyOf(metadata)));
 
+        String currentUserEmail = SecurityContextHolder.getContext().getAuthentication() != null
+            ? SecurityContextHolder.getContext().getAuthentication().getName() : null;
+
         ChatHistory history = new ChatHistory();
         history.setUserMessage(prompt);
         history.setAiResponse(aiResult);
         history.setAgentType(agentType);
+        history.setClientEmail(currentUserEmail);
         history.setMetadata(metadata.toString());
         history.setImageUrl(isReel ? videoUrl : imageUrl);
+        history.setLanguage(finalLanguage);
         history.setTimestamp(LocalDateTime.now());
         chatHistoryRepository.save(history);
 
@@ -361,6 +368,36 @@ public class RootController {
         html.append("</html>");
 
         return ResponseEntity.ok().contentType(org.springframework.http.MediaType.valueOf("text/html;charset=UTF-8")).body(html.toString());
+    }
+
+    /** Historique de générations de l'utilisateur connecté. */
+    @GetMapping("/history")
+    public ResponseEntity<?> history(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+        Page<ChatHistory> pageResult = chatHistoryRepository
+            .findByClientEmailOrderByTimestampDesc(email,
+                PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "timestamp")));
+
+        List<Map<String, Object>> items = pageResult.getContent().stream().map(h -> {
+            Map<String, Object> item = new HashMap<>();
+            item.put("id",        h.getId());
+            item.put("prompt",    h.getUserMessage());
+            item.put("agentType", h.getAgentType());
+            item.put("response",  h.getAiResponse());
+            item.put("imageUrl",  h.getImageUrl() != null ? h.getImageUrl() : "");
+            item.put("language",  h.getLanguage() != null ? h.getLanguage() : "Français");
+            item.put("timestamp", h.getTimestamp() != null ? h.getTimestamp().toString() : "");
+            return item;
+        }).toList();
+
+        return ResponseEntity.ok(Map.of(
+            "items",         items,
+            "totalElements", pageResult.getTotalElements(),
+            "totalPages",    pageResult.getTotalPages(),
+            "currentPage",   page
+        ));
     }
 
     private String cleanMarkdown(String text) {

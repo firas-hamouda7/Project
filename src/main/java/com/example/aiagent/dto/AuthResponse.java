@@ -8,6 +8,7 @@ public class AuthResponse {
     private String prenom;
     private String email;
     private String role;
+    private String photo;
 
     public AuthResponse(String token, Long id, String nom, String prenom, String email, String role) {
         this.token = token;
@@ -18,6 +19,11 @@ public class AuthResponse {
         this.role = role;
     }
 
+    public AuthResponse(String token, Long id, String nom, String prenom, String email, String role, String photo) {
+        this(token, id, nom, prenom, email, role);
+        this.photo = photo;
+    }
+
     public String getToken() { return token; }
     public String getType() { return type; }
     public Long getId() { return id; }
@@ -25,4 +31,5 @@ public class AuthResponse {
     public String getPrenom() { return prenom; }
     public String getEmail() { return email; }
     public String getRole() { return role; }
+    public String getPhoto() { return photo != null ? photo : ""; }
 }

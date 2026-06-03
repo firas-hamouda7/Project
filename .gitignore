@@ -1,0 +1,11 @@
+/target/
+*.class
+*.log
+boot_log.txt
+log.txt
+.project
+.classpath
+.settings/
+.idea/
+*.iml
+.vscode/

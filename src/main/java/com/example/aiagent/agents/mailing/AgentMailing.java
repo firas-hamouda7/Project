@@ -18,7 +18,9 @@ public class AgentMailing {
     }
 
     public String processMailing(String request, Map<String, Object> metadata) {
+        String language = metadata.getOrDefault("language", "Français").toString();
         String systemPrompt = "Tu es un Expert en Email Copywriting spécialisé dans la conversion et le Storytelling. "
+            + "LANGUE DE RÉDACTION : " + language + " (OBLIGATOIRE — rédige TOUT le contenu en " + language + "). "
             + "1. Utilise des structures d'écriture puissantes (AIDA : Attention, Intérêt, Désir, Action). "
             + "2. Propose toujours 3 variantes d'objets (Open-rate optimized). "
             + "3. Format : Utilise du Markdown pour une lecture élégante (gras, listes, séparation). "

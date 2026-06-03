@@ -18,6 +18,10 @@ public class ChatHistory {
 
     private String agentType;
 
+    private String clientEmail;
+
+    private String language;
+
     @Column(columnDefinition = "TEXT")
     private String metadata; // Re-ajout du champ metadata manquant
 
@@ -36,6 +40,10 @@ public class ChatHistory {
     public void setAiResponse(String aiResponse) { this.aiResponse = aiResponse; }
     public String getAgentType() { return agentType; }
     public void setAgentType(String agentType) { this.agentType = agentType; }
+    public String getClientEmail() { return clientEmail; }
+    public void setClientEmail(String clientEmail) { this.clientEmail = clientEmail; }
+    public String getLanguage() { return language; }
+    public void setLanguage(String language) { this.language = language; }
     public String getMetadata() { return metadata; }
     public void setMetadata(String metadata) { this.metadata = metadata; }
     public String getImageUrl() { return imageUrl; }

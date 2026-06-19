@@ -4,11 +4,13 @@ C:\Users\user\Desktop\ghost-employer\src\main\java\com\example\aiagent\agents\so
 C:\Users\user\Desktop\ghost-employer\src\main\java\com\example\aiagent\AiAgentApplication.java
 C:\Users\user\Desktop\ghost-employer\src\main\java\com\example\aiagent\controller\AuthController.java
 C:\Users\user\Desktop\ghost-employer\src\main\java\com\example\aiagent\controller\KnowledgeController.java
+C:\Users\user\Desktop\ghost-employer\src\main\java\com\example\aiagent\controller\NotificationController.java
 C:\Users\user\Desktop\ghost-employer\src\main\java\com\example\aiagent\controller\RootController.java
 C:\Users\user\Desktop\ghost-employer\src\main\java\com\example\aiagent\core\broker\GestionnaireService.java
 C:\Users\user\Desktop\ghost-employer\src\main\java\com\example\aiagent\core\creation\CreationService.java
 C:\Users\user\Desktop\ghost-employer\src\main\java\com\example\aiagent\core\document\DriveWatcherService.java
 C:\Users\user\Desktop\ghost-employer\src\main\java\com\example\aiagent\core\plan\PlanningService.java
+C:\Users\user\Desktop\ghost-employer\src\main\java\com\example\aiagent\core\rate\RateLimiterService.java
 C:\Users\user\Desktop\ghost-employer\src\main\java\com\example\aiagent\dto\AuthResponse.java
 C:\Users\user\Desktop\ghost-employer\src\main\java\com\example\aiagent\dto\ChatResponse.java
 C:\Users\user\Desktop\ghost-employer\src\main\java\com\example\aiagent\dto\ForgotPasswordRequest.java
@@ -18,11 +20,13 @@ C:\Users\user\Desktop\ghost-employer\src\main\java\com\example\aiagent\dto\Reset
 C:\Users\user\Desktop\ghost-employer\src\main\java\com\example\aiagent\dto\RootRequest.java
 C:\Users\user\Desktop\ghost-employer\src\main\java\com\example\aiagent\entity\ChatHistory.java
 C:\Users\user\Desktop\ghost-employer\src\main\java\com\example\aiagent\entity\KnowledgeChunk.java
+C:\Users\user\Desktop\ghost-employer\src\main\java\com\example\aiagent\entity\Notification.java
 C:\Users\user\Desktop\ghost-employer\src\main\java\com\example\aiagent\entity\Role.java
 C:\Users\user\Desktop\ghost-employer\src\main\java\com\example\aiagent\entity\User.java
 C:\Users\user\Desktop\ghost-employer\src\main\java\com\example\aiagent\entity\UserStatus.java
 C:\Users\user\Desktop\ghost-employer\src\main\java\com\example\aiagent\repository\ChatHistoryRepository.java
 C:\Users\user\Desktop\ghost-employer\src\main\java\com\example\aiagent\repository\KnowledgeChunkRepository.java
+C:\Users\user\Desktop\ghost-employer\src\main\java\com\example\aiagent\repository\NotificationRepository.java
 C:\Users\user\Desktop\ghost-employer\src\main\java\com\example\aiagent\repository\UserRepository.java
 C:\Users\user\Desktop\ghost-employer\src\main\java\com\example\aiagent\security\JwtFilter.java
 C:\Users\user\Desktop\ghost-employer\src\main\java\com\example\aiagent\security\JwtUtil.java

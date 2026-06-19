@@ -60,6 +60,7 @@ public class AgentSM {
             + "\n\nMISSION :\n" + styleInstruction
             + "\n\nRÈGLE ABSOLUE : RENVOIE UNIQUEMENT LE CONTENU FINAL. Aucune explication, aucun titre comme 'Voici la publication :'.";
 
-        return creation.generateText(systemPrompt, request);
+        String requestId = metadata != null && metadata.containsKey("requestId") ? metadata.get("requestId").toString() : null;
+        return creation.generateText(systemPrompt, request, "AGENT_SM", metadata, requestId);
     }
 }

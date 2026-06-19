@@ -27,6 +27,7 @@ public class AgentMailing {
             + "4. Incorpore naturellement les métadonnées suivantes : " + metadata.toString() + ". "
             + "Ton but est de maximiser le taux de clic.";
             
-        return creation.generateText(systemPrompt, request);
+        String requestId = metadata != null && metadata.containsKey("requestId") ? metadata.get("requestId").toString() : null;
+        return creation.generateText(systemPrompt, request, "AGENT_MAILING", metadata, requestId);
     }
 }

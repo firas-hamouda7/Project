@@ -16,6 +16,7 @@ com\example\aiagent\controller\KnowledgeController.class
 com\example\aiagent\repository\UserRepository.class
 com\example\aiagent\entity\Role.class
 com\example\aiagent\dto\ChatResponse.class
+com\example\aiagent\service\MailService$1.class
 com\example\aiagent\AiAgentApplication.class
 com\example\aiagent\controller\RootController.class
 com\example\aiagent\repository\ChatHistoryRepository.class

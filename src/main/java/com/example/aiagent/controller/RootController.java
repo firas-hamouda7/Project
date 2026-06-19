@@ -12,7 +12,6 @@ import org.springframework.data.domain.Sort;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.RequestParam;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -25,6 +24,7 @@ import com.example.aiagent.agents.site.AgentSite;
 import com.example.aiagent.agents.social.AgentSM;
 import com.example.aiagent.core.creation.CreationService;
 import com.example.aiagent.core.document.DriveWatcherService;
+import com.example.aiagent.core.rate.RateLimiterService;
 import com.example.aiagent.dto.ChatResponse;
 import com.example.aiagent.dto.RootRequest;
 import com.example.aiagent.entity.ChatHistory;
@@ -34,18 +34,33 @@ import com.example.aiagent.repository.ChatHistoryRepository;
 @RequestMapping("/api/root")
 public class RootController {
 
-    @Autowired private AgentSite agentSite;
-    @Autowired private AgentSM agentSM;
-    @Autowired private AgentMailing agentMailing;
-    @Autowired private CreationService creationService;
-    @Autowired private ChatHistoryRepository chatHistoryRepository;
-    @Autowired private DriveWatcherService driveWatcherService;
+    private final AgentSite agentSite;
+    private final AgentSM agentSM;
+    private final AgentMailing agentMailing;
+    private final CreationService creationService;
+    private final ChatHistoryRepository chatHistoryRepository;
+    private final DriveWatcherService driveWatcherService;
+    private final RateLimiterService rateLimiterService;
+
+    public RootController(AgentSite agentSite, AgentSM agentSM, AgentMailing agentMailing,
+                         CreationService creationService, ChatHistoryRepository chatHistoryRepository,
+                         DriveWatcherService driveWatcherService, RateLimiterService rateLimiterService) {
+        this.agentSite = agentSite;
+        this.agentSM = agentSM;
+        this.agentMailing = agentMailing;
+        this.creationService = creationService;
+        this.chatHistoryRepository = chatHistoryRepository;
+        this.driveWatcherService = driveWatcherService;
+        this.rateLimiterService = rateLimiterService;
+    }
 
     @PostMapping("/process")
     public ChatResponse process(@RequestBody RootRequest request) {
         String prompt = request.getPrompt();
         String lower = prompt.toLowerCase();
         Map<String, Object> metadata = request.getMetadata();
+        // Ensure metadata map non-null
+        if (metadata == null) metadata = new HashMap<>();
         List<ChatResponse.ProcessedResult> results = new ArrayList<>();
 
         // 1. DÉTECTION AGENT — priorité au type explicite envoyé par le frontend
@@ -76,44 +91,71 @@ public class RootController {
                 ? metadata.get("language").toString() : "français";
         metadata.put("language", finalLanguage);
 
-        // 3. MOTS-CLÉS VISUELS (seulement si image nécessaire)
-        String visualTopic = "people,business";
-        boolean needsImage = !agentType.equals("AGENT_SITE") && !agentType.equals("UNKNOWN_AGENT");
-        if (needsImage) {
-            try {
-                String topicResponse = creationService.generateText(
-                    "Return EXACTLY 2 English nouns (comma-separated) for a stock photo matching this prompt. ONLY 2 words.",
-                    prompt
-                ).toLowerCase().replaceAll("[^a-z,]", "").trim();
-                if (!topicResponse.isEmpty() && topicResponse.contains(",")) {
-                    visualTopic = topicResponse;
-                }
-            } catch (Exception e) { visualTopic = "people,business"; }
+        // requestId: prefer frontend-provided id for idempotency / dedup
+        String requestId = metadata.containsKey("requestId") && metadata.get("requestId") != null
+            ? metadata.get("requestId").toString() : java.util.UUID.randomUUID().toString();
+        metadata.put("requestId", requestId);
+        // expose agentType in metadata for downstream tracing
+        metadata.put("agentType", agentType);
+
+        // Rate limiting: prefer authenticated user email if present, otherwise use requestId
+        String currentUserEmail = SecurityContextHolder.getContext().getAuthentication() != null
+            ? SecurityContextHolder.getContext().getAuthentication().getName() : null;
+        String rateKey = currentUserEmail != null ? currentUserEmail : requestId;
+        boolean allowed = rateLimiterService.allowRequest(rateKey);
+        if (!allowed) {
+            ChatResponse resp = new ChatResponse();
+            resp.setStatus("RATE_LIMITED");
+            resp.setRequestId(requestId);
+            resp.setPreviewUrl("");
+            resp.setDetailedResults(List.of());
+            System.out.println("DEBUG: Rate limited requestId=" + requestId + " key=" + rateKey);
+            return resp;
         }
+
+        // 3. VISUAL TOPIC & MEDIA: media generation must be explicitly requested
+        boolean generateMedia = Boolean.parseBoolean(metadata.getOrDefault("generateMedia", "false").toString());
+        String visualTopic = metadata.containsKey("visualTopic") ? metadata.get("visualTopic").toString() : "people,business";
+        boolean needsImage = generateMedia && !agentType.equals("AGENT_SITE") && !agentType.equals("UNKNOWN_AGENT");
+        // store back (may be used later by front/backend)
         metadata.put("visualTopic", visualTopic);
 
         // 4. INJECTION CONTEXTE CLIENT
         String enrichedPrompt = prompt;
-        if (metadata.containsKey("clientId") && metadata.get("clientId") != null) {
+        if (metadata.containsKey("clientId") && metadata.get("clientId") != null
+                && Boolean.parseBoolean(metadata.getOrDefault("includeClientContext", "false").toString())) {
             String clientId = metadata.get("clientId").toString();
             String context = driveWatcherService.buildContext(clientId);
             if (!context.isBlank()) {
-                enrichedPrompt = prompt + "\n\n--- EXPERTISE CLIENT ---\n" + context;
-                System.out.println("DEBUG: Contexte client injecté pour " + clientId);
+                // Truncate context to avoid prompt explosion
+                int maxContext = 2000;
+                String shortContext = context.length() > maxContext ? context.substring(0, maxContext) + "\n[TRUNCATED CONTEXT]" : context;
+                enrichedPrompt = prompt + "\n\n--- EXPERTISE CLIENT ---\n" + shortContext;
+                System.out.println("DEBUG: Contexte client injecté (truncated) pour " + clientId + " requestId=" + requestId);
             }
+        }
+
+        // ensure enrichedPrompt not too long
+        int maxPrompt = 4000;
+        if (enrichedPrompt.length() > maxPrompt) {
+            enrichedPrompt = enrichedPrompt.substring(0, maxPrompt) + "\n[TRUNCATED_PROMPT]";
+            System.out.println("DEBUG: enrichedPrompt truncated requestId=" + requestId + " length=" + enrichedPrompt.length());
         }
 
         // 5. APPEL AGENT
         String aiResult;
-        if (agentType.equals("AGENT_SITE")) {
-            aiResult = agentSite.buildSite(enrichedPrompt, "LP", metadata);
-        } else if (agentType.equals("AGENT_SM")) {
-            aiResult = agentSM.processSocialMedia(enrichedPrompt, "Social", metadata);
-        } else if (agentType.equals("AGENT_MAILING")) {
-            aiResult = agentMailing.processMailing(enrichedPrompt, metadata);
-        } else {
-            aiResult = "Agent non déterminé.";
+        switch (agentType) {
+            case "AGENT_SITE" -> aiResult = agentSite.buildSite(enrichedPrompt, "LP", metadata);
+            case "AGENT_SM" -> aiResult = agentSM.processSocialMedia(enrichedPrompt, "Social", metadata);
+            case "AGENT_MAILING" -> aiResult = agentMailing.processMailing(enrichedPrompt, metadata);
+            default -> aiResult = "Agent non déterminé.";
         }
+        // After agent call, log LLM call count observed for this requestId
+        int llmCalls = creationService.getCallCount(requestId);
+        int estimatedTokens = creationService.getEstimatedTokens(requestId);
+        System.out.println("DEBUG: requestId=" + requestId + " agentType=" + agentType + " llmCalls=" + llmCalls + " estimatedTokens=" + estimatedTokens);
+        // clear per-request counter for next use
+        creationService.clearCallCount(requestId);
         aiResult = cleanMarkdown(aiResult);
 
         // 6. IMAGE / VIDÉO (non-site uniquement)
@@ -122,12 +164,15 @@ public class RootController {
         boolean isReel = (metadata.containsKey("type") && "reel".equalsIgnoreCase(metadata.get("type").toString()))
                       || lower.contains("reel") || lower.contains("video") || lower.contains("vidéo");
         if (needsImage) {
-            if (isReel) {
-                videoUrl = creationService.generateVideo(visualTopic);
-                metadata.put("videoUrl", videoUrl);
-            } else {
-                imageUrl = creationService.generateImage(visualTopic);
-                metadata.put("imageUrl", imageUrl);
+            // Only generate media if explicitly requested via metadata.generateMedia = true and visualTopic present
+            if (visualTopic != null && !visualTopic.isBlank()) {
+                if (isReel) {
+                    videoUrl = creationService.generateVideo(visualTopic);
+                    metadata.put("videoUrl", videoUrl);
+                } else {
+                    imageUrl = creationService.generateImage(visualTopic);
+                    metadata.put("imageUrl", imageUrl);
+                }
             }
         }
 
@@ -191,9 +236,6 @@ public class RootController {
 
         results.add(new ChatResponse.ProcessedResult(agentType, aiResult, Map.copyOf(metadata)));
 
-        String currentUserEmail = SecurityContextHolder.getContext().getAuthentication() != null
-            ? SecurityContextHolder.getContext().getAuthentication().getName() : null;
-
         ChatHistory history = new ChatHistory();
         history.setUserMessage(prompt);
         history.setAiResponse(aiResult);
@@ -208,6 +250,9 @@ public class RootController {
         ChatResponse response = new ChatResponse();
         response.setStatus("SUCCESS");
         response.setPreviewUrl("http://localhost:8080/api/root/preview");
+        response.setRequestId(requestId);
+        response.setLlmCallCount(llmCalls);
+        response.setEstimatedTokens(estimatedTokens);
         response.setDetailedResults(results);
         return response;
     }
@@ -269,7 +314,8 @@ public class RootController {
         html.append(".img-box img{position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover;display:block;}");
         html.append("</style></head>");
 
-        if (platform.equals("Instagram")) {
+        switch (platform) {
+            case "Instagram" -> {
             html.append("<body><div class='card' style='width:360px;border:1px solid #dbdbdb;").append(textAlignStyle).append("'>");
             // Header avec logo wordmark
             html.append("<div style='padding:10px 12px;display:flex;align-items:center;gap:8px;'>");
@@ -296,7 +342,8 @@ public class RootController {
             html.append("<div style='padding:0 12px 16px;font-size:13px;color:#262626;line-height:1.5;'>");
             html.append("<span style='font-weight:700;margin-right:4px;'>").append(brandingName).append("</span>").append(content);
             html.append("</div></div></body>");
-        } else if (platform.equals("Twitter")) {
+            }
+            case "Twitter" -> {
             // === TWITTER / X CARD ===
             // Avatar circulaire dédié (pas le wordmark complet)
             String[] twitterColors = {"#6C63FF","#FF6B6B","#4ECDC4","#FF9A9E","#43E97B","#F7971E","#4776E6","#F953C6"};
@@ -336,7 +383,8 @@ public class RootController {
             html.append("<span style='display:flex;align-items:center;gap:5px;'><svg width='18' height='18' fill='none' stroke='currentColor' stroke-width='1.8' viewBox='0 0 24 24'><path d='M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z'/></svg>J'aime</span>");
             html.append("<span style='display:flex;align-items:center;gap:5px;'><svg width='18' height='18' fill='none' stroke='currentColor' stroke-width='1.8' viewBox='0 0 24 24'><path d='M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8'/><polyline points='16 6 12 2 8 6'/><line x1='12' y1='2' x2='12' y2='15'/></svg>Partager</span>");
             html.append("</div></div></body>");
-        } else {
+            }
+            default -> {
             String bgColor = platform.equals("LinkedIn") ? "#f3f6f8" : "#f0f2f5";
             String accentColor = platform.equals("LinkedIn") ? "#0077b5" : "#1877f2";
             html.append("<body style='background:").append(bgColor).append(";'><div class='card' style='width:400px;border:1px solid #dde1e5;").append(textAlignStyle).append("'>");
@@ -363,6 +411,7 @@ public class RootController {
             // Actions
             html.append("<div style='padding:10px 12px;border-top:1px solid #e5e7eb;display:flex;justify-content:space-around;font-size:13px;font-weight:600;color:#65676b;'><span>J'aime</span><span>Commenter</span><span>Partager</span></div>");
             html.append("</div></body>");
+            }
         }
 
         html.append("</html>");

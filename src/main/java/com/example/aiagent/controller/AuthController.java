@@ -8,7 +8,9 @@ import com.example.aiagent.dto.ResetPasswordRequest;
 import com.example.aiagent.entity.Role;
 import com.example.aiagent.entity.User;
 import com.example.aiagent.entity.UserStatus;
+import com.example.aiagent.entity.Notification;
 import com.example.aiagent.repository.UserRepository;
+import com.example.aiagent.repository.NotificationRepository;
 import com.example.aiagent.security.JwtUtil;
 import com.example.aiagent.service.MailService;
 import org.springframework.http.ResponseEntity;
@@ -39,15 +41,18 @@ public class AuthController {
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
     private final MailService mailService;
+    private final NotificationRepository notificationRepository;
 
     public AuthController(UserRepository userRepository,
                           PasswordEncoder passwordEncoder,
                           JwtUtil jwtUtil,
-                          MailService mailService) {
+                          MailService mailService,
+                          NotificationRepository notificationRepository) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtUtil = jwtUtil;
         this.mailService = mailService;
+        this.notificationRepository = notificationRepository;
     }
 
     /** Inscription */
@@ -82,6 +87,10 @@ public class AuthController {
         user.setRole(role);
         user.setCreatedAt(LocalDateTime.now());
         userRepository.save(user);
+
+        // Notification de nouvel utilisateur pour les administrateurs
+        String notificationMessage = "Nouvel utilisateur inscrit : " + user.getPrenom() + " " + user.getNom() + " (" + user.getEmail() + ")";
+        notificationRepository.save(new Notification(notificationMessage));
 
         String token = jwtUtil.generateToken(user.getEmail(), user.getRole().name());
         return ResponseEntity.ok(new AuthResponse(
@@ -320,12 +329,17 @@ public class AuthController {
         user.setRole(role);
         user.setCreatedAt(LocalDateTime.now());
         userRepository.save(user);
+
+        // Notification de nouvel utilisateur pour les administrateurs
+        String notificationMessage = "Nouvel utilisateur créé par admin : " + user.getPrenom() + " " + user.getNom() + " (" + user.getEmail() + ")";
+        notificationRepository.save(new Notification(notificationMessage));
+
         return ResponseEntity.ok(toUserMap(user));
     }
 
     /** Modifier un utilisateur (ADMIN uniquement). */
     @PutMapping("/users/{id}")
-    public ResponseEntity<?> updateUser(@PathVariable Long id, @RequestBody Map<String, String> req) {
+    public ResponseEntity<?> updateUser(@PathVariable long id, @RequestBody Map<String, String> req) {
         if (!isAdmin()) return ResponseEntity.status(403).body(Map.of("error", "Accès réservé aux administrateurs"));
         User user = userRepository.findById(id).orElse(null);
         if (user == null) return ResponseEntity.notFound().build();
@@ -355,7 +369,7 @@ public class AuthController {
 
     /** Supprimer un utilisateur (ADMIN uniquement). */
     @DeleteMapping("/users/{id}")
-    public ResponseEntity<?> deleteUser(@PathVariable Long id) {
+    public ResponseEntity<?> deleteUser(@PathVariable long id) {
         if (!isAdmin()) return ResponseEntity.status(403).body(Map.of("error", "Accès réservé aux administrateurs"));
         User user = userRepository.findById(id).orElse(null);
         if (user == null) return ResponseEntity.notFound().build();
@@ -391,7 +405,7 @@ public class AuthController {
 
     /** Changer le statut d'un utilisateur (ADMIN uniquement). */
     @PatchMapping("/users/{id}/status")
-    public ResponseEntity<?> updateStatus(@PathVariable Long id, @RequestBody Map<String, String> req) {
+    public ResponseEntity<?> updateStatus(@PathVariable long id, @RequestBody Map<String, String> req) {
         if (!isAdmin()) return ResponseEntity.status(403).body(Map.of("error", "Accès réservé aux administrateurs"));
         User user = userRepository.findById(id).orElse(null);
         if (user == null) return ResponseEntity.notFound().build();

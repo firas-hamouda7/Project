@@ -12,23 +12,31 @@ public class PlanningService {
         this.creation = creation;
     }
 
-    public String generatePublicityPlan(String prompt) {
+    public String generatePublicityPlan(String prompt, java.util.Map<String,Object> metadata) {
+        String requestId = metadata != null && metadata.containsKey("requestId") ? metadata.get("requestId").toString() : null;
         return creation.generateText(
             "Tu es un expert en stratégie publicitaire et marketing digital.",
-            prompt
+            prompt,
+            "PLANNING_SERVICE",
+            metadata,
+            requestId
         );
     }
 
-    public String generateProductPlan(String prompt) {
+    public String generateProductPlan(String prompt, java.util.Map<String,Object> metadata) {
+        String requestId = metadata != null && metadata.containsKey("requestId") ? metadata.get("requestId").toString() : null;
         return creation.generateText(
             "Tu es un expert en stratégie produit et product management.",
-            prompt
+            prompt,
+            "PLANNING_SERVICE",
+            metadata,
+            requestId
         );
     }
 
-    public PlanResult generateCompletePlan(String prompt) {
-        String publicityPlan = generatePublicityPlan(prompt);
-        String productPlan = generateProductPlan(prompt);
+    public PlanResult generateCompletePlan(String prompt, java.util.Map<String,Object> metadata) {
+        String publicityPlan = generatePublicityPlan(prompt, metadata);
+        String productPlan = generateProductPlan(prompt, metadata);
         return new PlanResult(publicityPlan, productPlan);
     }
 

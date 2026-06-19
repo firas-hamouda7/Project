@@ -42,6 +42,7 @@ public class AgentSite {
                 + "RENVOIE UNIQUEMENT LE CODE HTML COMPLET (<!DOCTYPE html>...</html>). PAS DE TEXTE AUTOUR. PAS DE MARKDOWN. PAS DE BACKTICKS.";
         }
             
-        return creation.generateText(systemPrompt, request);
+        String requestId = metadata != null && metadata.containsKey("requestId") ? metadata.get("requestId").toString() : null;
+        return creation.generateText(systemPrompt, request, "AGENT_SITE", metadata, requestId);
     }
 }

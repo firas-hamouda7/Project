@@ -27,6 +27,7 @@ public class MailService {
     }
 
     @Async
+    @SuppressWarnings("null")
     public void sendResetPasswordEmail(String to, String token) {
         String resetUrl = frontendUrl + "/reset-password?token=" + token;
         System.out.println("Tentative d'envoi d'email à : " + to);
@@ -53,6 +54,7 @@ public class MailService {
     }
     
     @Async
+    @SuppressWarnings("null")
     public void sendStatusChangeEmail(User user, UserStatus status) {
         String subject = "";
         String content = "";

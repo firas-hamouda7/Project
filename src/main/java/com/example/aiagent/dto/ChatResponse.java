@@ -6,6 +6,9 @@ import java.util.Map;
 public class ChatResponse {
     private String status;
     private String previewUrl;
+    private String requestId;
+    private int llmCallCount;
+    private int estimatedTokens;
     private List<ProcessedResult> detailedResults;
 
     public ChatResponse() {}
@@ -20,6 +23,15 @@ public class ChatResponse {
     
     public String getPreviewUrl() { return previewUrl; }
     public void setPreviewUrl(String previewUrl) { this.previewUrl = previewUrl; }
+
+    public String getRequestId() { return requestId; }
+    public void setRequestId(String requestId) { this.requestId = requestId; }
+
+    public int getLlmCallCount() { return llmCallCount; }
+    public void setLlmCallCount(int llmCallCount) { this.llmCallCount = llmCallCount; }
+
+    public int getEstimatedTokens() { return estimatedTokens; }
+    public void setEstimatedTokens(int estimatedTokens) { this.estimatedTokens = estimatedTokens; }
 
     public List<ProcessedResult> getDetailedResults() { return detailedResults; }
     public void setDetailedResults(List<ProcessedResult> detailedResults) { this.detailedResults = detailedResults; }
